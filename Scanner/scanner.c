@@ -11,6 +11,29 @@
 
 
 //
+// scanner_init
+//
+// Initializes line number, column number, and value before
+// the start of the processing the next input stream. Scanner 
+// uses same lineNumber and colNumber variables by passing by 
+// reference so the current line and col numbers are always 
+// used. 
+//
+void scanner_init(int* lineNumber, int* colNumber, char* value)
+{
+  if (lineNumber == NULL || colNumber == NULL || value == NULL)
+    panic("one or more parameters are NULL (scanner_init)");
+
+  *lineNumber = 1;
+  *colNumber = 1;
+  value[0] = '\0';  // empty string
+}
+
+
+// SCANNER HELPERS: 
+
+
+//
 // collect_identifier
 //
 // Given the start of an identifier, collects the rest into value
@@ -134,25 +157,7 @@ static void collect_int_or_real_literal(FILE* input, int c, int* colNumber, char
   return; 
 }
 
-
-//
-// scanner_init
-//
-// Initializes line number, column number, and value before
-// the start of the processing the next input stream. Scanner 
-// uses same lineNumber and colNumber variables by passing by 
-// reference so the current line and col numbers are always 
-// used. 
-//
-void scanner_init(int* lineNumber, int* colNumber, char* value)
-{
-  if (lineNumber == NULL || colNumber == NULL || value == NULL)
-    panic("one or more parameters are NULL (scanner_init)");
-
-  *lineNumber = 1;
-  *colNumber = 1;
-  value[0] = '\0';  // empty string
-}
+// SCANNER: 
 
 //
 // scanner_nextToken
@@ -548,7 +553,7 @@ struct Token scanner_nextToken(FILE* input, int* lineNumber, int* colNumber, cha
 
       return T; 
     }
-    else if (c == '\'' || c == '"') {
+    else if (c == '\'' || c == '"') { // string literal
       T.id = nuPy_STR_LITERAL; 
       T.line = *lineNumber; 
       T.col = *colNumber; 
@@ -557,7 +562,7 @@ struct Token scanner_nextToken(FILE* input, int* lineNumber, int* colNumber, cha
 
       return T; 
     }
-    else if (isdigit(c)) {
+    else if (isdigit(c)) { // int or real literal 
       int type = 0; 
       T.line = *lineNumber; 
       T.col = *colNumber; 
@@ -568,6 +573,14 @@ struct Token scanner_nextToken(FILE* input, int* lineNumber, int* colNumber, cha
         T.id = nuPy_REAL_LITERAL; 
       }
       return T; 
+    }
+    else if (c == '#') {
+      (*lineNumber)++; 
+      *colNumber = 1; 
+      while (c != '\n' && c != EOF) {
+        c = fgetc(input); 
+      }
+      continue; 
     }
     else
     {
@@ -585,9 +598,6 @@ struct Token scanner_nextToken(FILE* input, int* lineNumber, int* colNumber, cha
     }
 
   }
-
-  //
   // execution should never get here, return occurs
   // from within loop
-  //
 }

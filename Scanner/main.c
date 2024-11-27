@@ -24,30 +24,26 @@ int main(int argc, char* argv[])
 {
   // Ask the user for a filename, if they don't enter one
   // then we'll take input from the keyboard:
-  char filename[64];
-
+  char filename[64]; 
 
   printf("Enter nuPython file (press ENTER to input from keyboard)>\n");
   
-  fgets(filename, 64, stdin);  // safely read at most 64 chars
-  filename[strcspn(filename, "\r\n")] = '\0';  // delete EOL chars e.g. \n
+  fgets(filename, 64, stdin);  // read the user input, enter generates \n which automatically ends the input 
+  filename[strcspn(filename, "\r\n")] = '\0';  // replace EOL char with \0 in filename string
 
 
   FILE* input = NULL;
   bool  keyboardInput = false;
 
-
-  if (strlen(filename) == 0) {
-    // input from the keyboard, aka stdin:
+  if (strlen(filename) == 0) { // aka only enter was pressed 
+    // input from the keyboard (stdin)
     input = stdin;
     keyboardInput = true;
   }
   else {
-    // can we open the file?
-    input = fopen(filename, "r");
+    input = fopen(filename, "r"); // otherwise, a filename was provided, try to search and open it 
 
-
-    if (input == NULL) // unable to open:
+    if (input == NULL) // couldn't open file
     {
       printf("**ERROR: unable to open input file '%s' for input.\n", filename);
       return 0;
@@ -73,7 +69,7 @@ int main(int argc, char* argv[])
   // setup lineNumber, colNumber, and value to start scanning:
   scanner_init(&lineNumber, &colNumber, value);
 
-  if (keyboardInput)  // prompt the user if appropriate:
+  if (keyboardInput)  // take input from keyboard 
   {
     printf("nuPython input (enter $ when you're done)>\n");
   }
