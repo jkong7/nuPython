@@ -160,10 +160,21 @@ struct Token scanner_nextToken(FILE* input, int* lineNumber, int* colNumber, cha
 
       collect_identifier(input, c, colNumber, value);
 
-      // Is the identifier a keyword? If so, return that
-      // token id instead.
+      char* keywords[] = {"and", "break", "continue", "def", "elif", "else", "False", "for", "if", 
+                          "in", "is", "None", "not", "or", "pass", "return", "True", "while"};
 
-      return T;
+      int keywordTokens[] = {nuPy_KEYW_AND, nuPy_KEYW_BREAK, nuPy_KEYW_CONTINUE, nuPy_KEYW_DEF, nuPy_KEYW_ELIF, 
+                            nuPy_KEYW_ELSE, nuPy_KEYW_FALSE, nuPy_KEYW_FOR, nuPy_KEYW_IF, nuPy_KEYW_IN, 
+                            nuPy_KEYW_IS, nuPy_KEYW_NONE, nuPy_KEYW_NOT, nuPy_KEYW_OR, nuPy_KEYW_PASS, 
+                            nuPy_KEYW_RETURN, nuPy_KEYW_TRUE, nuPy_KEYW_WHILE};     
+
+      for (int i=0; i<18; i++) {
+        if (strcmp(value, keywords[i])==0) {
+          T.id=keywordTokens[i]; 
+          break; 
+        }
+      }
+      return T; 
     }
     else if (c == '*')
     {
