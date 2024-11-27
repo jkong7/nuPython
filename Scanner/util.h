@@ -1,13 +1,5 @@
 /*util.h*/
 
-//
-// Project: utility functions for nuPython
-//
-// Prof. Joe Hummel
-// Northwestern University
-// CS 211
-//
-
 #pragma once
 
 

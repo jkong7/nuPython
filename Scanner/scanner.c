@@ -328,7 +328,9 @@ struct Token scanner_nextToken(FILE* input, int* lineNumber, int* colNumber, cha
         } else {
           T.id = nuPy_REAL_LITERAL; 
         }
+        return T; 
       }
+      ungetc(c, input); 
 
       return T; 
     }
@@ -353,7 +355,10 @@ struct Token scanner_nextToken(FILE* input, int* lineNumber, int* colNumber, cha
         } else {
           T.id = nuPy_REAL_LITERAL; 
         }
+        return T; 
       }
+
+      ungetc(c, input); 
 
       return T; 
     }
