@@ -99,10 +99,12 @@ static void collect_string_literal(FILE* input, int c, int* lineNumber, int* col
 // prints termination error if there is a quote mismatch or there is 
 // no termination (new line or EOF)
 //
-static void collect_int_or_real_literal(FILE* input, int c, int* colNumber, char* value, int* type) {
+static void collect_int_or_real_literal(FILE* input, int c, int* colNumber, char* value, int* type, bool proceeding) {
   assert (isdigit(c)); //c should be start of int or real literal 
 
-  int i = 0; 
+
+  int i = (proceeding) ? 1 : 0; // this function is called either after a + or -, or just starting from a digit, use proceeding bool input 
+                                // to determine which case it is, if it is proceeding a + or -, i starts at 1 since value[0] is already filled with the sign
 
   while (true) {
     if (c == '.') {
@@ -311,6 +313,18 @@ struct Token scanner_nextToken(FILE* input, int* lineNumber, int* colNumber, cha
       value[0]=(char)c; 
       value[1]='\0'; 
 
+      c = fgetc(input); 
+
+      if (isdigit(c)) {
+        int type = 0; 
+        collect_int_or_real_literal(input, c, colNumber, value, &type, true); 
+        if (type == 0) {
+          T.id = nuPy_INT_LITERAL; 
+        } else {
+          T.id = nuPy_REAL_LITERAL; 
+        }
+      }
+
       return T; 
     }
     else if (c == '-') 
@@ -323,6 +337,18 @@ struct Token scanner_nextToken(FILE* input, int* lineNumber, int* colNumber, cha
 
       value[0]=(char)c; 
       value[1]='\0'; 
+
+      c=fgetc(input); 
+
+      if (isdigit(c)) {
+        int type = 0; 
+        collect_int_or_real_literal(input, c, colNumber, value, &type, true); 
+        if (type == 0) {
+          T.id = nuPy_INT_LITERAL; 
+        } else {
+          T.id = nuPy_REAL_LITERAL; 
+        }
+      }
 
       return T; 
     }
@@ -535,7 +561,7 @@ struct Token scanner_nextToken(FILE* input, int* lineNumber, int* colNumber, cha
       int type = 0; 
       T.line = *lineNumber; 
       T.col = *colNumber; 
-      collect_int_or_real_literal(input, c, colNumber, value, &type); // collect the int or real value
+      collect_int_or_real_literal(input, c, colNumber, value, &type, false); // collect the int or real value
       if (type == 0) { //Either an int or real literal 
         T.id = nuPy_INT_LITERAL; 
       } else {
