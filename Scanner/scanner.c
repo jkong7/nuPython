@@ -37,9 +37,99 @@ static void collect_identifier(FILE* input, int c, int* colNumber, char* value)
   ungetc(c, input);
 
   // turn the value into a string, and let's see if we have a keyword:
-  value[i] = '\0';  // build C-style string:
+  value[i] = '\0'; 
 
   return;
+}
+
+//
+// collect_string_literal
+//
+// Given the start of a string literal, collects the entire string, 
+// prints termination error if there is a quote mismatch or there is 
+// no termination (new line or EOF)
+//
+static void collect_string_literal(FILE* input, int c, int* lineNumber, int* colNumber, char* value) 
+{
+  assert(c == '\'' || c == '"'); // c should be start of string literal 
+
+  int i = 0; 
+
+  char start = c; // mark which quote c is at the start
+
+  int col = *colNumber; 
+
+  while (true) {
+    c = fgetc(input); 
+
+    // new line or EOF, string wasn't terminated properly 
+    if (c == EOF || c == '\n') {
+      printf("**WARNING: string literal @ (%d, %d) not terminated properly\n", *lineNumber, col); 
+      ungetc(c, input); // push back new line or EOF 
+      break; 
+    }
+
+    // string was terminated properly (consume quote, don't push back!)
+    if (c == start) {
+      (*colNumber)++; 
+      break; 
+    }
+
+    // quote mismatch, string wasn't terminated properly 
+    if (c == '\'' || c=='"') {
+      printf("**WARNING: string literal @ (%d, %d) not terminated properly\n", *lineNumber, col); 
+      ungetc(c, input); // push back the mismatched quote (this can be the start of another quote, don't consume now)
+      break; 
+    }
+
+    // store string literal 
+    value[i]=(char)c; 
+    i++; 
+    (*colNumber)++; 
+  }
+
+  value[i]='\0'; 
+  return; 
+}
+
+//
+// collect_int_or_real_literal
+//
+// Given the start of a string literal, collects the entire string, 
+// prints termination error if there is a quote mismatch or there is 
+// no termination (new line or EOF)
+//
+static void collect_int_or_real_literal(FILE* input, int c, int* colNumber, char* value, int* type) {
+  assert (isdigit(c)); //c should be start of int or real literal 
+
+  int i = 0; 
+
+  while (true) {
+    if (c == '.') {
+      *type=1; // real literal, so let caller know 
+      value[i]=(char)c; // consume and advance past .
+      i++; 
+      (*colNumber)++; 
+      c=fgetc(input); 
+      while (isdigit(c)) { // collect digits to the right of .
+        value[i]=(char)c; 
+        i++; 
+        (*colNumber)++; 
+        c=fgetc(input);  
+      }
+      break; 
+    }
+    if (!isdigit(c)) {
+      break; 
+    }
+    value[i]=(char)c; 
+    i++; 
+    (*colNumber)++; 
+    c=fgetc(input); 
+  }
+  ungetc(c, input); // push back c (went beyond last digit)
+  value[i]='\0'; 
+  return; 
 }
 
 
@@ -432,7 +522,27 @@ struct Token scanner_nextToken(FILE* input, int* lineNumber, int* colNumber, cha
 
       return T; 
     }
-    
+    else if (c == '\'' || c == '"') {
+      T.id = nuPy_STR_LITERAL; 
+      T.line = *lineNumber; 
+      T.col = *colNumber; 
+
+      collect_string_literal(input, c, lineNumber, colNumber, value); // collect the string literal value
+
+      return T; 
+    }
+    else if (isdigit(c)) {
+      int type = 0; 
+      T.line = *lineNumber; 
+      T.col = *colNumber; 
+      collect_int_or_real_literal(input, c, colNumber, value, &type); // collect the int or real value
+      if (type == 0) { //Either an int or real literal 
+        T.id = nuPy_INT_LITERAL; 
+      } else {
+        T.id = nuPy_REAL_LITERAL; 
+      }
+      return T; 
+    }
     else
     {
       // if we get here, then char denotes an UNKNOWN token:
