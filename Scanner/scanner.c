@@ -198,57 +198,228 @@ struct Token scanner_nextToken(FILE* input, int* lineNumber, int* colNumber, cha
       ungetc(c, input);
 
       return T;
-    } //TODO: 
-    else if (c == '+') {
-
-    }
-    else if (c == '-') {
-
-    }
-    else if (c == '/') {
-
     } 
-    else if (c == '%') {
+    else if (c == '+') 
+    {
+      T.id = nuPy_PLUS; 
+      T.line = *lineNumber; 
+      T.col = *colNumber; 
 
+      (*colNumber)++; 
+
+      value[0]=(char)c; 
+      value[1]='\0'; 
+
+      return T; 
+    }
+    else if (c == '-') 
+    {
+      T.id = nuPy_MINUS; 
+      T.line = *lineNumber; 
+      T.col = *colNumber; 
+
+      (*colNumber)++;
+
+      value[0]=(char)c; 
+      value[1]='\0'; 
+
+      return T; 
+    }
+    else if (c == '/') 
+    {
+      T.id = nuPy_SLASH; 
+      T.line = *lineNumber; 
+      T.col = *colNumber; 
+
+      (*colNumber)++;
+
+      value[0]=(char)c; 
+      value[1]='\0'; 
+
+      return T; 
     } 
-    else if (c == '=') {
+    else if (c == '%') 
+    {
+      T.id = nuPy_PERCENT; 
+      T.line = *lineNumber; 
+      T.col = *colNumber; 
 
-    }
-    else if (c == '==') {
+      (*colNumber)++;
 
-    }
-    else if (c == '!=') {
+      value[0]=(char)c; 
+      value[1]='\0'; 
 
-    }
-    else if (c == '<') {
+      return T; 
+    } 
+    else if (c == '=') // handles = and ==
+    {
+      T.id=nuPy_EQUAL; 
+      T.line=*lineNumber; 
+      T.col=*colNumber; 
 
+      (*colNumber)++;
+
+      value[0]=(char)c; 
+      value[1]='\0'; 
+
+      c=fgetc(input); 
+
+      if (c == '=') {
+        T.id=nuPy_EQUALEQUAL; 
+        (*colNumber)++;
+        value[1]=(char)c; 
+        value[2]='\0'; 
+        return T; 
+      }
+      ungetc(c, input); 
+      return T; 
     }
-    else if (c == '<=') {
-      
+    else if (c == '!') {
+      T.id=nuPy_NOTEQUAL; 
+      T.line=*lineNumber; 
+      T.col=*colNumber; 
+
+      (*colNumber)++; 
+
+      value[0]=(char)c; 
+      value[1]='\0'; 
+
+      c=fgetc(input); 
+
+      if (c == '=') {
+        (*colNumber)++;
+        value[1]=(char)c; 
+        value[2]='\0'; 
+        return T; 
+      }
+
+      ungetc(c, input); 
+      T.id=nuPy_UNKNOWN; 
+      return T; 
     }
-    else if (c == '>') {
-      
+    else if (c == '<') //handles < and <=
+    {
+      T.id=nuPy_LT; 
+      T.line=*lineNumber; 
+      T.col=*colNumber; 
+
+      (*colNumber)++;
+
+      value[0]=(char)c; 
+      value[1]='\0'; 
+
+      c=fgetc(input); 
+
+      if (c == '=') {
+        T.id=nuPy_LTE; 
+        (*colNumber)++;
+        value[1]=(char)c; 
+        value[2]='\0'; 
+        return T; 
+      }
+      ungetc(c, input); 
+      return T; 
     }
-    else if (c == '>=') {
-      
+    else if (c == '>') //handles > and >=
+    {
+      T.id=nuPy_GT; 
+      T.line=*lineNumber; 
+      T.col=*colNumber; 
+
+      (*colNumber)++;
+
+      value[0]=(char)c; 
+      value[1]='\0'; 
+
+      c=fgetc(input); 
+
+      if (c == '=') {
+        T.id=nuPy_GTE; 
+        (*colNumber)++; 
+        value[1]=(char)c; 
+        value[2]='\0'; 
+        return T; 
+      }
+      ungetc(c, input); 
+      return T; 
     }
-    else if (c == '&') {
-      
+    else if (c == '&') 
+    {
+      T.id = nuPy_AMPERSAND; 
+      T.line = *lineNumber; 
+      T.col = *colNumber; 
+
+      (*colNumber)++; 
+
+      value[0]=(char)c; 
+      value[1]='\0'; 
+
+      return T; 
     }
-    else if (c == ':') {
-      
+    else if (c == ':') 
+    {
+      T.id = nuPy_COLON; 
+      T.line = *lineNumber; 
+      T.col = *colNumber; 
+
+      (*colNumber)++; 
+
+      value[0]=(char)c; 
+      value[1]='\0'; 
+
+      return T; 
     }
-    else if (c == '[') {
-      
+    else if (c == '[') 
+    {
+      T.id = nuPy_LEFT_BRACKET; 
+      T.line = *lineNumber; 
+      T.col = *colNumber; 
+
+      (*colNumber)++; 
+
+      value[0]=(char)c; 
+      value[1]='\0'; 
+
+      return T; 
     }
-    else if (c == ']') {
-      
+    else if (c == ']') 
+    {
+      T.id = nuPy_RIGHT_BRACKET; 
+      T.line = *lineNumber; 
+      T.col = *colNumber; 
+
+      (*colNumber)++; 
+
+      value[0]=(char)c; 
+      value[1]='\0'; 
+
+      return T; 
     }
-    else if (c == '{') {
-      
+    else if (c == '{') 
+    {
+      T.id = nuPy_LEFT_BRACE; 
+      T.line = *lineNumber; 
+      T.col = *colNumber; 
+
+      (*colNumber)++; 
+
+      value[0]=(char)c; 
+      value[1]='\0'; 
+
+      return T; 
     }
-    else if (c == '}') {
-      
+    else if (c == '}') 
+    {
+      T.id = nuPy_RIGHT_BRACE; 
+      T.line = *lineNumber; 
+      T.col = *colNumber; 
+
+      (*colNumber)++; 
+
+      value[0]=(char)c; 
+      value[1]='\0'; 
+
+      return T; 
     }
     
     else
