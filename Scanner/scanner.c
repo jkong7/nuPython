@@ -336,7 +336,7 @@ struct Token scanner_nextToken(FILE* input, int* lineNumber, int* colNumber, cha
     }
     else if (c == '-') 
     {
-      T.id = nuPy_MINUS; 
+      T.id = nuPy_MINUS;  
       T.line = *lineNumber; 
       T.col = *colNumber; 
 
