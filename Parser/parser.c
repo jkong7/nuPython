@@ -189,16 +189,21 @@ static bool parser_empty_stmt(struct TokenQueue* tokens)
 //
 static bool startOfStmt(struct TokenQueue* tokens)
 {
-  struct Token curToken = tokenqueue_peekToken(tokens);
+  struct Token nextToken = tokenqueue_peekToken(tokens);
+  struct Token nextnextToken = tokenqueue_peek2Token(tokens);
 
 
-
-  if (curToken.id == nuPy_KEYW_PASS ||
-      curToken.id == nuPy_EOLN) {
-    return true;
-  }
-  else {
-    return false;
+  if ( // handle all 6 stmt types using next and nextnext tokens 
+      nextToken.id == nuPy_IDENTIFIER || 
+      (nextToken.id == nuPy_ASTERISK && nextnextToken.id == nuPy_IDENTIFIER) || 
+      nextToken.id == nuPy_KEYW_IF || 
+      nextToken.id == nuPy_KEYW_WHILE || 
+      nextToken.id == nuPy_KEYW_PASS || 
+      nextToken.id == nuPy_EOLN
+  ) {
+    return true; 
+  } else {
+    return false; 
   }
 }
 
@@ -213,32 +218,42 @@ static bool startOfStmt(struct TokenQueue* tokens)
 //
 static bool parser_stmt(struct TokenQueue* tokens)
 {
-  //
-  // TODO: for now we just accept a program consisting of a
-  // single "pass" or "empty" statement.
-  //
   if (!startOfStmt(tokens)) {
     struct Token curToken = tokenqueue_peekToken(tokens);
     char* curValue = tokenqueue_peekValue(tokens);
 
     errorMsg("start of a statement", curValue, curToken);
     return false;
-  }
+  } // not a start of stmt
 
-  //
-  // we have the start of a stmt, but which one?
-  //
-  struct Token curToken = tokenqueue_peekToken(tokens);
+  // we have the start of a stmt, not branch into the correct one 
+  struct Token nextToken = tokenqueue_peekToken(tokens);
+  struct Token nextnextToken = tokenqueue_peek2Token(tokens); 
 
-  if (curToken.id == nuPy_KEYW_PASS) {
+  if (nextToken.id == nuPy_ASTERISK && nextnextToken.id==nuPy_IDENTIFIER) {
+    bool result = parser_assignment(tokens); 
+    return result; 
+  } else if (nextToken.id == nuPy_IDENTIFIER) {
+    if (nextnextToken.id == nuPy_LEFT_PAREN) {
+      bool result = parser_call_stmt(tokens); 
+      return result; 
+    } else if (nextnextToken.id == nuPy_EQUAL) {
+      bool result = parser_assignment(tokens); 
+      return result; 
+    }
+  } else if (nextToken.id == nuPy_KEYW_IF) {
+    bool result = parser_if_then_else(tokens); 
+    return result; 
+  } else if (nextToken.id == nuPy_KEYW_WHILE) {
+    bool result = parser_while_loop(tokens); 
+    return result; 
+  } else if (nextToken.id == nuPy_KEYW_PASS) {
     bool result = parser_pass_stmt(tokens);
     return result;
-  }
-  else if (curToken.id == nuPy_EOLN) {
+  } else if (nextToken.id == nuPy_EOLN) {
     bool result = parser_empty_stmt(tokens);
     return result;
-  }
-  else {
+  } else {
     printf("**INTERNAL ERROR: unknown stmt (parser_stmt)\n");
     return false;
   }
@@ -251,28 +266,17 @@ static bool parser_stmt(struct TokenQueue* tokens)
 //
 static bool parser_stmts(struct TokenQueue* tokens)
 {
-  //
-  // TODO: for now we just accept a program consisting of a
-  // single statement.
-  //
-  if (!parser_stmt(tokens))
-    return false;
+  if (!parser_stmt(tokens)) {
+    return false; 
+  }
   
-  struct Token nextToken = tokenqueue_peekToken(tokens); 
-  struct Token nextnextToken = tokenqueue_peekToken(tokens); 
-
-  if ( // check if the optional stmt is there, handle all 6 stmt types using next and nextnext tokens 
-      nextToken.id == nuPy_IDENTIFIER || 
-      (nextToken.id == nuPy_ASTERISK && nextnextToken.id == nuPy_IDENTIFIER) || 
-      nextToken.id == nuPy_KEYW_IF || 
-      nextToken.id == nuPy_KEYW_WHILE || 
-      nextToken.id == nuPy_KEYW_PASS || 
-      nextToken.id == nuPy_EOLN
-  ) {
-    return parser_stmts(tokens); // it is there, so recursively parse 
+  if (startOfStmt(tokens)) {
+    bool result = parser_stmts(tokens); // optional stmt is there, so recursively parse
+    return result; 
   }
 
-  return true; // optional stmt not there, still valid so return true 
+  return true; // optional stmt not there, success => true
+  
 }
 
 
@@ -300,7 +304,16 @@ static bool parser_program(struct TokenQueue* tokens)
 //
 // Given an input stream, uses the scanner to obtain the tokens
 // and then checks the syntax of the input against the BNF rules
-// of the language
+// for the subset of Python we are supporting. 
+//
+// Returns NULL if a syntax error was found; in this case 
+// an error message was output. Returns a pointer to a list
+// of tokens -- a Token Queue -- if no syntax errors were 
+// detected. This queue contains the complete input in token
+// form for further analysis.
+//
+// NOTE: it is the callers responsibility to free the resources
+// used by the Token Queue.
 //
 struct TokenQueue* parser_parse(FILE* input)
 {
