@@ -112,9 +112,72 @@ static bool parser_body(struct TokenQueue* tokens)
 //          | else ':' EOLN <body>
 //
 static bool parser_else(struct TokenQueue* tokens)
-{
+{ 
+  struct Token nextToken = tokenqueue_peekToken(tokens); 
+  char* nextValue = tokenqueue_peekValue(tokens);
 
-  return true;
+  if (nextToken.id == nuPy_KEYW_ELIF) {
+    tokenqueue_dequeue(tokens); // move on from elif 
+
+    if (!parser_expr(tokens)) {
+      return false; 
+    }
+
+    if (!match(tokens, nuPy_COLON, ":")) {
+      return false; 
+    }
+
+    if (!match(tokens, nuPy_EOLN, "EOLN")) {
+      return false; 
+    }
+
+    if (!parser_body(tokens)) {
+      return false; 
+    }
+
+    struct Token optionalelse = tokenqueue_peekToken(tokens); //optional else handling 
+    if (optionalelse.id == nuPy_KEYW_ELSE || optionalelse.id == nuPy_KEYW_ELIF) {
+      bool result = parser_else(tokens); 
+      return result; 
+    }
+
+    return true; 
+  } else if (nextToken.id == nuPy_KEYW_ELSE) {
+    tokenqueue_dequeue(tokens); //move on from else 
+
+    if (!match(tokens, nuPy_COLON, ":")) {
+      return false; 
+    }
+
+    if (!match(tokens, nuPy_EOLN, "EOLN")) {
+      return false; 
+    }
+
+    if (!parser_body(tokens)) {
+      return false; 
+    }
+
+    return true; 
+  } else {
+    errorMsg("else or elif", nextValue, nextToken); // if token wasn't else of elif => error 
+    return false; 
+  }
+}
+
+//
+// <value> ::= <expr>
+//           | <function_call>
+//
+static bool parser_value(struct TokenQueue* tokens) {
+  struct Token nextToken = tokenqueue_peekToken(tokens); 
+  struct Token nextnextToken = tokenqueue_peek2Token(tokens); 
+  if (nextToken.id == nuPy_IDENTIFIER && nextnextToken.id == nuPy_LEFT_PAREN) {
+    bool result = parser_function_call(tokens); 
+    return result; 
+  }
+  bool result = parser_expr(tokens); 
+  return result; 
+
 }
 
 //
@@ -122,9 +185,11 @@ static bool parser_else(struct TokenQueue* tokens)
 //
 static bool parser_assignment(struct TokenQueue* tokens) {
   struct Token nextToken = tokenqueue_peekToken(tokens); 
-  if (nextToken.id == nuPy_ASTERISK) {
 
+  if (nextToken.id == nuPy_ASTERISK) {
+    tokenqueue_dequeue(tokens); // optional * is present, advance to next token 
   }
+  // either way, tokens should now be on the identifier 
 
   if (!match(tokens, nuPy_IDENTIFIER, "identifier")) {
     return false; 
