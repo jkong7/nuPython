@@ -117,6 +117,34 @@ static bool parser_else(struct TokenQueue* tokens)
   return true;
 }
 
+//
+// <assignment> ::= ['*'] IDENTIFIER '=' <value> EOLN
+//
+static bool parser_assignment(struct TokenQueue* tokens) {
+  struct Token nextToken = tokenqueue_peekToken(tokens); 
+  if (nextToken.id == nuPy_ASTERISK) {
+
+  }
+
+  if (!match(tokens, nuPy_IDENTIFIER, "identifier")) {
+    return false; 
+  }
+  
+  if (!match(tokens, nuPy_EQUAL, "=")) {
+    return false; 
+  }
+
+  if (!parser_value(tokens)) {
+    return false; 
+  }
+
+  if (!match(tokens, nuPy_EOLN, "EOLN")) {
+    return false; 
+  }
+
+  return true; 
+}
+
 
 //
 // <if_then_else> ::= if <expr> ':' EOLN <body> [<else>]
@@ -138,7 +166,9 @@ static bool parser_if_then_else(struct TokenQueue* tokens)
   if (!parser_body(tokens))
     return false;
 
+  //
   // is the optional <else> present?
+  //
   struct Token curToken = tokenqueue_peekToken(tokens);
 
   if (curToken.id == nuPy_KEYW_ELIF || curToken.id == nuPy_KEYW_ELSE)
@@ -151,6 +181,48 @@ static bool parser_if_then_else(struct TokenQueue* tokens)
     // <else> is optional, missing => do nothing and return success:
     return true;
   }
+}
+
+//
+// <while_loop> ::= while <expr> ':' EOLN <body>
+// 
+static bool parser_while_loop(struct TokenQueue* tokens) {
+  if (!match(tokens, nuPy_KEYW_WHILE, "while")) {
+    return false; 
+  }
+
+  if (!parser_expr(tokens)) {
+    return false; 
+  }
+
+  if (!match(tokens, nuPy_COLON, ":")) {
+    return false; 
+  }
+
+  if (!match(tokens, nuPy_EOLN, "EOLN")) {
+    return false; 
+  }
+
+  if (!parser_body(tokens)) {
+    return false; 
+  }
+
+  return true; 
+}
+
+//
+// <call_stmt> ::= <function_call> EOLN
+// 
+static bool parser_call_stmt(struct TokenQueue* tokens) {
+  if (!parser_function_call(tokens)) {
+    return false; 
+  }
+
+  if (!match(tokens, nuPy_EOLN, "EOLN")) {
+    return false; 
+  }
+
+  return true; 
 }
 
 
