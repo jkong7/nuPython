@@ -249,15 +249,21 @@ static bool parser_unary_expr(struct TokenQueue* tokens) {
   struct Token nextToken = tokenqueue_peekToken(tokens);
   char* nextValue = tokenqueue_peekValue(tokens);  
   struct Token nextnextToken = tokenqueue_peek2Token(tokens); 
+  char* nextnextValue = tokenqueue_peek2Value(tokens); 
 
   if (is_unary_expr(tokens)) {
     tokenqueue_dequeue(tokens); 
     tokenqueue_dequeue(tokens); 
     return true; 
   }
-  errorMsg("unary expression", nextValue, nextToken); 
-  return false; 
+  
+  if (nextToken.id == nuPy_ASTERISK || nextToken.id == nuPy_AMPERSAND || nextToken.id == nuPy_PLUS || nextToken.id == nuPy_MINUS) {
+    errorMsg("identifier", nextnextValue, nextnextToken); 
+  } else {
+    errorMsg("unary expression", nextValue, nextToken); 
 
+  }
+  return false; 
 }
 
 
@@ -400,6 +406,9 @@ static bool parser_else(struct TokenQueue* tokens)
 static bool parser_value(struct TokenQueue* tokens) {
 
   struct Token curToken = tokenqueue_peekToken(tokens);
+  char* curValue = tokenqueue_peekValue(tokens); 
+  struct Token nextnextToken = tokenqueue_peek2Token(tokens);
+  char* nextnextValue = tokenqueue_peek2Value(tokens); 
 
   if (curToken.id == nuPy_IDENTIFIER) {
     if (!tokenqueue_empty(tokens)) {
@@ -415,7 +424,11 @@ static bool parser_value(struct TokenQueue* tokens) {
     return parser_expr(tokens);
   }
 
-  errorMsg("expr or function call", tokenqueue_peekValue(tokens), curToken);
+  if (curToken.id == nuPy_ASTERISK || curToken.id == nuPy_AMPERSAND || curToken.id == nuPy_PLUS || curToken.id == nuPy_MINUS) {
+    errorMsg("identifier", nextnextValue, nextnextToken); 
+  } else {
+    errorMsg("expr or function call", tokenqueue_peekValue(tokens), curToken);
+  }
   return false;
 }
 
@@ -619,6 +632,7 @@ static bool parser_stmt(struct TokenQueue* tokens)
 
   // we have the start of a stmt, not branch into the correct one 
   struct Token nextToken = tokenqueue_peekToken(tokens);
+  char* nextValue = tokenqueue_peekValue(tokens); 
   struct Token nextnextToken = tokenqueue_peek2Token(tokens); 
 
   if (nextToken.id == nuPy_ASTERISK && nextnextToken.id==nuPy_IDENTIFIER) {
@@ -632,6 +646,8 @@ static bool parser_stmt(struct TokenQueue* tokens)
       bool result = parser_assignment(tokens); 
       return result; 
     }
+    errorMsg("assignment or function call", nextValue, nextToken); 
+    return false; 
   } else if (nextToken.id == nuPy_KEYW_IF) {
     bool result = parser_if_then_else(tokens); 
     return result; 
