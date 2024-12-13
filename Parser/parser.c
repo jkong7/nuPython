@@ -85,7 +85,33 @@ static bool match(struct TokenQueue* tokens, int expectedID, char* expectedValue
   return true;
 }
 
-// parsing functions: 
+//
+// is_element
+// Helper that returns whether or not current token is an element 
+//
+static bool is_op(struct TokenQueue* tokens) {
+  struct Token nextToken = tokenqueue_peekToken(tokens); 
+  char* nextValue = tokenqueue_peekValue(tokens); 
+  if (
+      nextToken.id == nuPy_PLUS || 
+      nextToken.id == nuPy_MINUS || 
+      nextToken.id == nuPy_ASTERISK || 
+      nextToken.id == nuPy_POWER || 
+      nextToken.id == nuPy_PERCENT || 
+      nextToken.id == nuPy_SLASH || 
+      nextToken.id == nuPy_EQUALEQUAL || 
+      nextToken.id == nuPy_NOTEQUAL || 
+      nextToken.id == nuPy_LT || 
+      nextToken.id == nuPy_LTE || 
+      nextToken.id == nuPy_GT || 
+      nextToken.id == nuPy_GTE || 
+      nextToken.id == nuPy_KEYW_IS || 
+      nextToken.id == nuPy_KEYW_IN
+  ) {
+    return true;
+  }
+  return false; 
+}
 
 //
 // <op> ::= '+'
@@ -105,39 +131,22 @@ static bool match(struct TokenQueue* tokens, int expectedID, char* expectedValue
 //
 static bool parser_op(struct TokenQueue* tokens) {
   struct Token nextToken = tokenqueue_peekToken(tokens); 
-  if (
-      nextToken.id == nuPy_PLUS || 
-      nextToken.id == nuPy_MINUS || 
-      nextToken.id == nuPy_ASTERISK || 
-      nextToken.id == nuPy_POWER || 
-      nextToken.id == nuPy_PERCENT || 
-      nextToken.id == nuPy_SLASH || 
-      nextToken.id == nuPy_EQUALEQUAL || 
-      nextToken.id == nuPy_NOTEQUAL || 
-      nextToken.id == nuPy_LT || 
-      nextToken.id == nuPy_LTE || 
-      nextToken.id == nuPy_GT || 
-      nextToken.id == nuPy_GTE || 
-      nextToken.id == nuPy_KEYW_IS || 
-      nextToken.id == nuPy_KEYW_IN
-  ) {
-    return true;
+  char* nextValue = tokenqueue_peekValue(tokens); 
+  if (is_op(tokens)) {
+    tokenqueue_dequeue(tokens); 
+    return true; 
   }
-
+  errorMsg("operator", nextValue, nextToken); 
   return false; 
 }
 
 //
-// <element> ::= IDENTIFIER
-//             | INT_LITERAL
-//             | REAL_LITERAL
-//             | STR_LITERAL
-//             | True
-//             | False
-//             | None
+// is_element
+// Helper that returns whether or not current token is an element 
 //
-static bool parser_element(struct TokenQueue* tokens) {
+static bool is_element(struct TokenQueue* tokens) {
   struct Token nextToken = tokenqueue_peekToken(tokens);
+  char* nextValue = tokenqueue_peekValue(tokens); 
 
   if (
       nextToken.id == nuPy_IDENTIFIER || 
@@ -150,18 +159,64 @@ static bool parser_element(struct TokenQueue* tokens) {
   ) {
     return true; 
   }
-
+  
   return false; 
 }
 
 //
-// <unary_expr> ::= '*' IDENTIFIER
-//                | '&' IDENTIFIER
-//                | '+' (IDENTIFIER | INT_LITERAL | REAL_LITERAL)
-//                | '-' (IDENTIFIER | INT_LITERAL | REAL_LITERAL)
-//                | <element>
+// is_element_but_not_identifier
+// Helper that returns whether or not current token is an element 
+// but NOT an identifier 
+// 
+static bool is_element_but_not_identifier(struct TokenQueue* tokens) {
+  struct Token nextToken = tokenqueue_peekToken(tokens);
+  char* nextValue = tokenqueue_peekValue(tokens); 
+
+  if ( 
+      nextToken.id == nuPy_INT_LITERAL || 
+      nextToken.id == nuPy_REAL_LITERAL || 
+      nextToken.id == nuPy_STR_LITERAL || 
+      nextToken.id == nuPy_KEYW_TRUE || 
+      nextToken.id == nuPy_KEYW_FALSE || 
+      nextToken.id == nuPy_KEYW_NONE
+  ) {
+    return true; 
+  }
+  
+  return false; 
+}
+
+
 //
-static bool parser_unary_expr(struct TokenQueue* tokens) {
+// <element> ::= IDENTIFIER
+//             | INT_LITERAL
+//             | REAL_LITERAL
+//             | STR_LITERAL
+//             | True
+//             | False
+//             | None
+//
+static bool parser_element(struct TokenQueue* tokens) {
+  struct Token nextToken = tokenqueue_peekToken(tokens);
+  char* nextValue = tokenqueue_peekValue(tokens);
+  if (!is_element(tokens)) {
+    errorMsg("element", nextValue, nextToken); 
+    return false; 
+  }
+  tokenqueue_dequeue(tokens); 
+  return true; 
+}
+
+//
+// is_unary_expression 
+// Helper that returns whether or not current token forms 
+// a unary expression 
+// 
+
+static bool is_unary_expr(struct TokenQueue* tokens) {
+  if (is_element(tokens)) {
+    return true; 
+  } 
   struct Token nextToken = tokenqueue_peekToken(tokens); 
   struct Token nextnextToken = tokenqueue_peek2Token(tokens); 
   
@@ -176,8 +231,33 @@ static bool parser_unary_expr(struct TokenQueue* tokens) {
     return true; 
   } 
   
-  bool result = parser_element(tokens); // if we get here, return true only if next encounter is an element 
-  return result; 
+  return false; 
+}
+
+
+//
+// <unary_expr> ::= '*' IDENTIFIER
+//                | '&' IDENTIFIER
+//                | '+' (IDENTIFIER | INT_LITERAL | REAL_LITERAL)
+//                | '-' (IDENTIFIER | INT_LITERAL | REAL_LITERAL)
+//                | <element>
+//
+static bool parser_unary_expr(struct TokenQueue* tokens) {
+  if (is_element(tokens)) {
+    return parser_element(tokens); 
+  } 
+  struct Token nextToken = tokenqueue_peekToken(tokens);
+  char* nextValue = tokenqueue_peekValue(tokens);  
+  struct Token nextnextToken = tokenqueue_peek2Token(tokens); 
+
+  if (is_unary_expr(tokens)) {
+    tokenqueue_dequeue(tokens); 
+    tokenqueue_dequeue(tokens); 
+    return true; 
+  }
+  errorMsg("unary expression", nextValue, nextToken); 
+  return false; 
+
 }
 
 
@@ -190,13 +270,14 @@ static bool parser_expr(struct TokenQueue* tokens)
     return false; 
   }
 
-  if (parser_op(tokens)) {
-    if (!parser_unary_expr(tokens)) {
-      return false; 
+  if (is_op(tokens)) {
+    if (parser_op(tokens)) {
+      if (!parser_unary_expr(tokens)) {
+        return false; 
+      }
     }
   }
-
-  return true;
+  return true; 
 }
 
 //
@@ -207,12 +288,14 @@ static bool parser_function_call(struct TokenQueue* tokens) {
     return false; 
   }
 
-  if (!match(tokens, nuPy_LEFT_PAREN, '(')) {
+  if (!match(tokens, nuPy_LEFT_PAREN, "(")) {
     return false; 
   }
 
-  if (parser_element(tokens)) { //handle optional element 
-
+  if (is_element(tokens)) { 
+    if (!parser_element(tokens)) { 
+      return false; 
+    }
   }
 
   if (!match(tokens, nuPy_RIGHT_PAREN, ")")) {
@@ -315,16 +398,27 @@ static bool parser_else(struct TokenQueue* tokens)
 //           | <function_call>
 //
 static bool parser_value(struct TokenQueue* tokens) {
-  struct Token nextToken = tokenqueue_peekToken(tokens); 
-  struct Token nextnextToken = tokenqueue_peek2Token(tokens); 
-  if (nextToken.id == nuPy_IDENTIFIER && nextnextToken.id == nuPy_LEFT_PAREN) {
-    bool result = parser_function_call(tokens); 
-    return result; 
-  }
-  bool result = parser_expr(tokens); 
-  return result; 
 
+  struct Token curToken = tokenqueue_peekToken(tokens);
+
+  if (curToken.id == nuPy_IDENTIFIER) {
+    if (!tokenqueue_empty(tokens)) {
+      struct Token nextToken = tokenqueue_peek2Token(tokens);
+      if (nextToken.id == nuPy_LEFT_PAREN) {
+        return parser_function_call(tokens);
+      }
+    }
+    return parser_expr(tokens);
+  }
+
+  if (is_unary_expr(tokens)) {
+    return parser_expr(tokens);
+  }
+
+  errorMsg("expr or function call", tokenqueue_peekValue(tokens), curToken);
+  return false;
 }
+
 
 //
 // <assignment> ::= ['*'] IDENTIFIER '=' <value> EOLN
@@ -473,22 +567,36 @@ static bool parser_empty_stmt(struct TokenQueue* tokens)
 static bool startOfStmt(struct TokenQueue* tokens)
 {
   struct Token nextToken = tokenqueue_peekToken(tokens);
-  struct Token nextnextToken = tokenqueue_peek2Token(tokens);
 
-
-  if ( // handle all 6 stmt types using next and nextnext tokens 
+  if (
       nextToken.id == nuPy_IDENTIFIER || 
-      (nextToken.id == nuPy_ASTERISK && nextnextToken.id == nuPy_IDENTIFIER) || 
       nextToken.id == nuPy_KEYW_IF || 
       nextToken.id == nuPy_KEYW_WHILE || 
       nextToken.id == nuPy_KEYW_PASS || 
       nextToken.id == nuPy_EOLN
   ) {
-    return true; 
-  } else {
-    return false; 
+    return true;
   }
+
+  if (nextToken.id == nuPy_ASTERISK) {
+    struct Token nextnextToken;
+    bool hasSecondToken = true;
+
+    if (tokenqueue_empty(tokens)) {
+      hasSecondToken = false;
+    } else {
+      nextnextToken = tokenqueue_peek2Token(tokens);
+    }
+
+    if (hasSecondToken && nextnextToken.id == nuPy_IDENTIFIER) {
+      return true;
+    }
+  }
+
+  return false;
 }
+
+
 
 
 //
@@ -540,6 +648,7 @@ static bool parser_stmt(struct TokenQueue* tokens)
     printf("**INTERNAL ERROR: unknown stmt (parser_stmt)\n");
     return false;
   }
+  return false; 
 }
 
 
