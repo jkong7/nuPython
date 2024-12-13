@@ -85,16 +85,142 @@ static bool match(struct TokenQueue* tokens, int expectedID, char* expectedValue
   return true;
 }
 
+// parsing functions: 
+
+//
+// <op> ::= '+'
+//        | '-'
+//        | '*'
+//        | '**'
+//        | '%'
+//        | '/'
+//        | '=='
+//        | '!='
+//        | '<'
+//        | '<='
+//        | '>'
+//        | '>='
+//        | is
+//        | in
+//
+static bool parser_op(struct TokenQueue* tokens) {
+  struct Token nextToken = tokenqueue_peekToken(tokens); 
+  if (
+      nextToken.id == nuPy_PLUS || 
+      nextToken.id == nuPy_MINUS || 
+      nextToken.id == nuPy_ASTERISK || 
+      nextToken.id == nuPy_POWER || 
+      nextToken.id == nuPy_PERCENT || 
+      nextToken.id == nuPy_SLASH || 
+      nextToken.id == nuPy_EQUALEQUAL || 
+      nextToken.id == nuPy_NOTEQUAL || 
+      nextToken.id == nuPy_LT || 
+      nextToken.id == nuPy_LTE || 
+      nextToken.id == nuPy_GT || 
+      nextToken.id == nuPy_GTE || 
+      nextToken.id == nuPy_KEYW_IS || 
+      nextToken.id == nuPy_KEYW_IN
+  ) {
+    return true;
+  }
+
+  return false; 
+}
+
+//
+// <element> ::= IDENTIFIER
+//             | INT_LITERAL
+//             | REAL_LITERAL
+//             | STR_LITERAL
+//             | True
+//             | False
+//             | None
+//
+static bool parser_element(struct TokenQueue* tokens) {
+  struct Token nextToken = tokenqueue_peekToken(tokens);
+
+  if (
+      nextToken.id == nuPy_IDENTIFIER || 
+      nextToken.id == nuPy_INT_LITERAL || 
+      nextToken.id == nuPy_REAL_LITERAL || 
+      nextToken.id == nuPy_STR_LITERAL || 
+      nextToken.id == nuPy_KEYW_TRUE || 
+      nextToken.id == nuPy_KEYW_FALSE || 
+      nextToken.id == nuPy_KEYW_NONE
+  ) {
+    return true; 
+  }
+
+  return false; 
+}
+
+//
+// <unary_expr> ::= '*' IDENTIFIER
+//                | '&' IDENTIFIER
+//                | '+' (IDENTIFIER | INT_LITERAL | REAL_LITERAL)
+//                | '-' (IDENTIFIER | INT_LITERAL | REAL_LITERAL)
+//                | <element>
+//
+static bool parser_unary_expr(struct TokenQueue* tokens) {
+  struct Token nextToken = tokenqueue_peekToken(tokens); 
+  struct Token nextnextToken = tokenqueue_peek2Token(tokens); 
+  
+  if (
+      (nextToken.id == nuPy_ASTERISK && nextnextToken.id == nuPy_IDENTIFIER) || 
+      (nextToken.id == nuPy_AMPERSAND && nextnextToken.id == nuPy_IDENTIFIER) || 
+      ((nextToken.id == nuPy_PLUS || nextToken.id == nuPy_MINUS) && 
+       (nextnextToken.id == nuPy_IDENTIFIER || 
+        nextnextToken.id == nuPy_INT_LITERAL || 
+        nextnextToken.id == nuPy_REAL_LITERAL))
+  ) {
+    return true; 
+  } 
+  
+  bool result = parser_element(tokens); // if we get here, return true only if next encounter is an element 
+  return result; 
+}
+
 
 //
 // <expr> ::= <unary_expr> [<op> <unary_expr>]
 //
 static bool parser_expr(struct TokenQueue* tokens)
 {
+  if (!parser_unary_expr(tokens)) {
+    return false; 
+  }
+
+  if (parser_op(tokens)) {
+    if (!parser_unary_expr(tokens)) {
+      return false; 
+    }
+  }
+
   return true;
 }
 
+//
+// <function_call> ::= IDENTIFIER '(' [<element>] ')'
+//
+static bool parser_function_call(struct TokenQueue* tokens) {
+  if (!match(tokens, nuPy_IDENTIFIER, "identifier")) {
+    return false; 
+  }
 
+  if (!match(tokens, nuPy_LEFT_PAREN, '(')) {
+    return false; 
+  }
+
+  if (parser_element(tokens)) { //handle optional element 
+
+  }
+
+  if (!match(tokens, nuPy_RIGHT_PAREN, ")")) {
+    return false; 
+  }
+
+  return true; 
+}
 
 
 //
@@ -102,9 +228,29 @@ static bool parser_expr(struct TokenQueue* tokens)
 //
 static bool parser_body(struct TokenQueue* tokens)
 {
+  if (!match(tokens, nuPy_LEFT_BRACE, "{")) {
+    return false; 
+  }
+
+  if (!match(tokens, nuPy_EOLN, "EOLN")) {
+    return false; 
+  }
+
+  if (!parser_stmts(tokens)) {
+    return false; 
+  }
+
+  if (!match(tokens, nuPy_RIGHT_BRACE, "}")) {
+    return false; 
+  }
+
+  if (!match(tokens, nuPy_EOLN, "EOLN")) {
+    return false; 
+  }
 
   return true;
 }
+
 
 
 //
